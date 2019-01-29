@@ -1,45 +1,86 @@
+
 <template>
-  <Page>
+  <Page androidStatusBarBackground="#474747">
     <StackLayout>
-      <WrapLayout top="0" left="0" itemWidth="70">
-        <Button @tap="getDirections">Get Directions</Button>
-        <Button @tap="clearRoute">Clear Route</Button>
-        <Button @tap="startJourney">Start Journey</Button>
-        <button @tap="endJourney">End Journey</button>
+      <WrapLayout horizontalAlignment="center">
+        <!-- <Button @tap="getDirections">Get Directions</Button> -->
+        <!-- <Button @tap="clearRoute">Clear Route</Button> -->
+        <!-- <Button @tap="startJourney">Start Journey</Button> -->
+        <!-- <button @tap="endJourney">End Journey</button> -->
       </WrapLayout>
-      <AbsoluteLayout>
+
+      <DockLayout>
         <MapView
-          top="0"
-          left="0"
-          height="100%"
+          dock="top"
+          height="85%"
           width="100%"
           zoom="17"
           :latitude="this.origin.latitude"
           :longitude="this.origin.longitude"
-          @mapReady="mapReady"
-          @coordinateLongPress="locationSelected"
+          v-if="allowExecution"
         />
-        <TextView top="0" left="10" v-model="journeyDetails" v-if="journeyStarted"/>
-        <TextView top="100" left="10" text="Destination Reached." v-if="destinationReached"/>
-      </AbsoluteLayout>
+        <TextView dock="bottom" :text="journeyDetails" editable="false"/>
+      </DockLayout>
     </StackLayout>
   </Page>
 </template>
 
 <script>
+import * as permissions from "nativescript-permissions";
+import * as platform from "platform";
+
 export default {
-    data() {
-        return {
-            origin: {latitude: 0, longitude: 0}
-        }
-    },
-    methods: {
-        mapReady(args) {
-          console.log(this.$parent)
-        },
-        locationSelected(args) {
-            
-        }
+  /* data object */
+  data() {
+    return {
+      origin: { latitude: 0, longitude: 0 },
+      allowExecution: false,
+      journeyDetails: "details!!",
+      mapView: null
+    };
+  },
+  created: function() {
+    /* dont run the android permissions code for iOS */
+    if (platform.isIOS) {
+      this.allowExecution = true;
+      return;
     }
-}
+    /* list of permissions needed */
+    let permissionsNeeded = [
+      android.Manifest.permission.ACCESS_FINE_LOCATION,
+      android.Manifest.permission.ACCESS_COARSE_LOCATION
+    ];
+    /* showing up permissions dialog */
+    permissions
+      .requestPermissions(permissionsNeeded, "Give it to me!")
+      .then(() => {
+        this.allowExecution = true;
+      })
+      .catch(() => {
+        this.allowExecution = false;
+      });
+  }
+};
 </script>
+
+<style>
+button {
+  font-size: 9;
+  background-color: #474747;
+  color: white;
+  width: 25%;
+}
+ActionBar {
+  background-color: #474747;
+  color: white;
+}
+Page {
+  background-color: #474747;
+}
+TextView {
+  border-bottom-color: transparent;
+  color: white;
+  border-bottom-width: 1;
+  padding: 15;
+}
+</style>
