@@ -7,7 +7,14 @@ android {
   }
   aaptOptions {  
     additionalParameters "--no-version-vectors"  
-  }  
+  }
+   project.ext {
+       googlePlayServicesVersion = "15.0.1"
+   }
+   dependencies {
+      def googlePlayServicesVersion = project.googlePlayServicesVersion
+      compile "com.google.android.gms:play-services-location:$googlePlayServicesVersion"
+   }
 } 
 
 def settingsGradlePath

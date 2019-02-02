@@ -1,6 +1,7 @@
 
 <template>
   <Page androidStatusBarBackground="#474747">
+    <ActionBar title="Realtime Location NSVUE"/>
     <StackLayout>
       <WrapLayout horizontalAlignment="center">
         <Button @tap="getDirections">Get Directions</Button>
@@ -11,13 +12,16 @@
 
       <DockLayout>
         <MapView
-          dock="top"
-          height="85%"
           width="100%"
-          zoom="17"
-          :latitude="this.origin.latitude"
-          :longitude="this.origin.longitude"
+          height="85%"
+          dock="top"
+          :zoom="zoom"
+          :latitude="origin.latitude"
+          :longitude="origin.longitude"
           v-if="allowExecution"
+          @mapReady="mapReady"
+          @coordinateLongPress="locationSelected"
+          mapAnimationsEnabled="true"
         />
         <TextView dock="bottom" :text="journeyDetails" editable="false"/>
       </DockLayout>
@@ -28,10 +32,11 @@
 <script>
 import * as permissions from "nativescript-permissions";
 import * as platform from "platform";
-import * as MapsHelper from "MapsHelper.js";
+import MapsHelper from "./MapsHelper.js";
 
 export default {
   mixins: [
+    MapsHelper.MapsUIHelper,
     MapsHelper.DirectionsAPIHelper,
     MapsHelper.LocationHelper,
     MapsHelper.DistanceMatrixAPIHelper
@@ -40,9 +45,12 @@ export default {
   data() {
     return {
       origin: { latitude: 0, longitude: 0 },
-      journeyDetails: "details!!",
+      destination: { latitude: 0, longitude: 0 },
+      journeyDetails: "Journey: Not started yet!",
       allowExecution: false,
-      mapView: null
+      mapView: null,
+      zoom: 17,
+      APIKEY: "AIzaSyAPw4owHD6nyUOMGQDI1pzyaELFndKXUe8"
     };
   },
   created: function() {
@@ -66,6 +74,16 @@ export default {
     mapReady(args) {
       /* get the mapView instance */
       this.mapView = args.object;
+      
+      /* ios map center bug fix */
+      setTimeout(() => {
+        this.mapView.height = {
+          unit: this.mapView.height.unit,
+          value: this.mapView.height.value + 0.0004
+        };
+      }, 100);
+
+      this.mapView.mapAnimationsEnabled = true;
       /* turn on my location button on map */
       this.enableMyLocationButton(true);
       /* add destination marker to map */
@@ -91,10 +109,7 @@ export default {
         /* draw route from encoded polyline points */
         this.drawRoute(response.encodedPolylinePoints);
         /* adjust camera to bring route into view */
-        this.setCameraBounds(
-          response.northEastBounds,
-          response.southEastBounds
-        );
+        this.getRouteInView(response.northEastBounds, response.southWestBounds);
       });
     },
     clearRoute() {
@@ -108,7 +123,6 @@ export default {
       this.carMarker.visible = true;
       /* update journey details */
       this.journeyDetails = "Journey started...";
-
       /* start watching for location changes and update the map and journey details accordingly */
       this.watchLocationAndUpdateJourney();
     },
@@ -122,7 +136,7 @@ export default {
       /* bring back my location button on screen */
       this.enableMyLocationButton(true);
       /* update journey details */
-      this.journeyDetails = "Destination Reached."
+      this.journeyDetails = "Destination Reached.";
     }
   }
 };
@@ -133,7 +147,8 @@ button {
   font-size: 9;
   background-color: #474747;
   color: white;
-  width: 25%;
+  width: 23%;
+  height: 60;
 }
 ActionBar {
   background-color: #474747;

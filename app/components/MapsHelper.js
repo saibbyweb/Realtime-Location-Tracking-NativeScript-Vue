@@ -1,135 +1,27 @@
 import {
     Position,
-    Marker
+    Marker,
+    Polyline
 } from "nativescript-google-maps-sdk";
 import * as geolocation from "nativescript-geolocation";
 import {
     Accuracy
 } from "ui/enums";
 import * as mapsModule from "nativescript-google-maps-sdk";
-const decodePolyline = require("decode-google-map-polyline");
 import * as http from "http";
 import * as platform from "tns-core-modules/platform";
+const decodePolyline = require("decode-google-map-polyline");
 
-import {
-    TWEEN
-} from "nativescript-tweenjs";
 
-const DirectionsAPIHelper = {
-    data() {
-        return {
-            origin: {
-                latitude: 0,
-                longitude: 0
-            },
-            destination: {
-                latitude: 0,
-                longitude: 0
-            },
-            northEastBounds: {},
-            southWestBounds: {},
-            polyline: null,
-            encodedPolyline: null,
-            routeCordinates: [],
-            APIKEY: "AIzaSyCeXREu81qPlViAQ0eiy2FrnfyutxxsTo8",
-            journeyStarted: false
-        }
-    },
-    methods: {
-        setBounds(neBounds, swBounds) {
-            this.northEastBounds.lat = neBounds.lat;
-            this.northEastBounds.lng = neBounds.lng;
-            this.southWestBounds.lat = swBounds.lat;
-            this.southWestBounds.lng = swBounds.lng;
-        },
-        getDirections() {
-            let originCordinates = this.origin.latitude + "," + this.origin.longitude;
-            let destinationCordinates =
-                this.destination.latitude + "," + this.destination.longitude;
-            let APIURL =
-                "https://maps.googleapis.com/maps/api/directions/json?origin=" +
-                originCordinates +
-                "&destination=" +
-                destinationCordinates +
-                "&key=" +
-                this.APIKEY;
-            http.getJSON(APIURL).then(
-                result => {
-                    this.encodedPolyline = result.routes[0].overview_polyline.points;
-                    this.routeCordinates = decodePolyline(this.encodedPolyline);
-                    this.setBounds(result.routes[0].bounds.northeast, result.routes[0].bounds.southwest);
-                    this.drawRoute();
-                },
-                error => {
-                    console.log(error);
-                }
-            );
-        },
-        drawRoute() {
-            this.mapView.removeAllPolylines();
-            this.polyline = new mapsModule.Polyline();
-            this.mapView.addPolyline(this.polyline);
-            this.routeCordinates.forEach(point =>
-                this.polyline.addPoint(
-                    Position.positionFromLatLng(point.lat, point.lng)
-                )
-            );
-            this.polyline.visible = true;
-            this.polyline.geodesic = true;
-            this.polyline.width = 10;
-            if (!this.journeyStarted)
-                this.animateCamera();
-        },
-        animateCamera() {
-            if (platform.isAndroid) {
-                let builder = new com.google.android.gms.maps.model.LatLngBounds.Builder();
-                let position1 = new com.google.android.gms.maps.model.LatLng(
-                    this.northEastBounds.lat,
-                    this.northEastBounds.lng
-                );
-                let position2 = new com.google.android.gms.maps.model.LatLng(
-                    this.southWestBounds.lat,
-                    this.southWestBounds.lng
-                );
-                builder.include(position1);
-                builder.include(position2);
-                let bounds = builder.build();
-                let padding = 150;
-                let cu = com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds(
-                    bounds,
-                    padding
-                );
-                this.mapView.gMap.animateCamera(cu, 1000, null);
-            } else {
-                let bounds = GMSCoordinateBounds.alloc().init();
-                let position1 = CLLocationCoordinate2DMake(
-                    this.northEastBounds.lat,
-                    this.northEastBounds.lng
-                );
-                let position2 = CLLocationCoordinate2DMake(
-                    this.southWestBounds.lat,
-                    this.southWestBounds.lng
-                );
-                bounds = bounds.includingCoordinate(position1);
-                bounds = bounds.includingCoordinate(position2);
-                let update = GMSCameraUpdate.fitBoundsWithPadding(bounds, 100);
-                this.mapView.gMap.animateWithCameraUpdate(update);
-            }
-        }
-    }
-}
-
-const LocationHelper = {
+const MapsUIHelper = {
     data() {
         return {
             destinationMarker: new Marker(),
-            myLocationMarker: new Marker(),
-            watch: null
+            carMarker: new Marker(),
         }
     },
     methods: {
-        turnOnMyLocation(value) {
-            /* enable compass (enabled by default on android */
+        enableMyLocationButton(value) {
             this.mapView.settings.compassEnabled = value;
             if (platform.isAndroid) {
                 let uiSettings = this.mapView.gMap.getUiSettings();
@@ -142,34 +34,90 @@ const LocationHelper = {
                 this.mapView.gMap.settings.myLocationButton = value;
             }
         },
-        addMarkerToMap(marker, car) {
-            car ? (marker.icon = "redcar") : console.log('Simple Marker');
+        addMarkerToMap(marker, visibility, icon) {
             marker.position = Position.positionFromLatLng(0, 0);
-            this.mapView.addMarker(marker);
             marker.draggable = true;
+            marker.visible = visibility;
+            if(icon !== undefined)
+                marker.icon = icon;
+            this.mapView.addMarker(marker);
         },
-        setMarker(marker, lat, lng, heading) {
-            // marker.position = Position.positionFromLatLng(lat, lng);
+        setMarker(marker, lat, lng, direction) {
+            marker.position = Position.positionFromLatLng(lat, lng);
+            if (direction !== undefined)
+                marker.rotation = direction;
+        }
+    }
+}
 
-            new TWEEN.Tween(marker.position)
-            .to({ latitude: lat, longitude: lng }, 1000)
-            .easing(TWEEN.Easing.Linear.None)
-            .onUpdate(object => {
-              marker.position = Position.positionFromLatLng(
-                object.latitude,
-                object.longitude
-              );
-            })
-            .start();
-            this.logData+= "\n " + heading;
 
-            // heading ? (marker.rotation = heading) : console.log('No need to rotate marker');
-            if(heading) {
-                this.logData+= "\n " + heading;
-                marker.rotation = heading;
-            }
+const DirectionsAPIHelper = {
+    data() {
+        return {
+            polyline: new Polyline(),
+            routeCordinates: []
+        }
+    },
+    methods: {
+        async hitDirectionsAPI() {
+
+            let originCordinates = this.origin.latitude + "," + this.origin.longitude;
+            let destinationCordinates = this.destination.latitude + "," + this.destination.longitude;
+            let APIURL = `https://maps.googleapis.com/maps/api/directions/json?origin=${originCordinates}&destination=${destinationCordinates}&key=${this.APIKEY}`;
+            let promise = new Promise((resolve, reject) => {
+
+                http.getJSON(APIURL).then(
+                    result => {
+                        /* check if call was successful*/
+                        let response = {
+                            encodedPolylinePoints: result.routes[0].overview_polyline.points,
+                            northEastBounds: result.routes[0].bounds.northeast,
+                            southWestBounds: result.routes[0].bounds.southwest
+                        };
+                        resolve(response);
+                    },
+                    error => {
+                        console.log(error);
+                    }
+                );
+            });
+
+            return await promise;
+
         },
-        fetchLocation() {
+        drawRoute(encodedPolylinePoints) {
+            this.mapView.removeAllPolylines();
+            this.routeCordinates = decodePolyline(encodedPolylinePoints);
+            this.polyline = new Polyline();
+            this.routeCordinates.forEach(point =>
+                this.polyline.addPoint(Position.positionFromLatLng(point.lat, point.lng))
+            );
+            this.polyline.visible = true;
+            this.polyline.geodesic = true;
+            this.polyline.width = 7;
+
+            this.mapView.addPolyline(this.polyline);
+
+            /* journey started / animate camera */
+        },
+        getRouteInView(northEast, southWest) {
+            let bounds = mapsModule.Bounds.fromCoordinates(
+                Position.positionFromLatLng(southWest.lat, southWest.lng),
+                Position.positionFromLatLng(northEast.lat, northEast.lng)
+            );
+            this.mapView.setViewport(bounds,30);
+        }
+    }
+}
+
+const LocationHelper = {
+    data() {
+        return {
+            watch: null
+        }
+    },
+    methods: {
+        fetchMyLocation() {
             geolocation
                 .getCurrentLocation({
                     desiredAccuracy: Accuracy.high,
@@ -177,12 +125,8 @@ const LocationHelper = {
                     timeout: 20000
                 })
                 .then(res => {
-                    let lat = res.latitude;
-                    let lng = res.longitude;
-
-                    this.origin.latitude = lat;
-                    this.origin.longitude = lng;
-
+                    this.origin.latitude = res.latitude;
+                    this.origin.longitude = res.longitude;
                 })
                 .catch(e => {
                     console.log("oh frak, error", e);
@@ -193,13 +137,13 @@ const LocationHelper = {
                 res => {
                     let lat = res.latitude;
                     let lng = res.longitude;
-                    /* needs to check */
-                    let heading = res.direction;
+                    let direction = res.direction;
+
                     this.origin.latitude = lat;
                     this.origin.longitude = lng;
 
                     /* bind live location to marker position & make marker always head towards the driving direction */
-                    this.setMarker(this.myLocationMarker, lat, lng, heading);
+                    this.setMarker(this.carMarker, lat, lng, direction);
                     /* update polyline after location changes */
                     this.getDirections();
                     /* calculate and display arrival time and distance on screen */
@@ -223,18 +167,15 @@ const LocationHelper = {
 const DistanceMatrixAPIHelper = {
     data() {
         return {
-            DMAPIKEY: "AIzaSyAPw4owHD6nyUOMGQDI1pzyaELFndKXUe8",
-            distance: 999,
-            duration: 999,
-            journeyDetails: "",
+            distance: 0,
+            duration: 0,
             destinationReached: false
         }
     },
     methods: {
         getDistance() {
             let distanceMatrixAPIURL = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&";
-            distanceMatrixAPIURL += `origins=${this.origin.latitude},${this.origin.longitude}&destinations=${this.destination.latitude},${this.destination.longitude}&key=${this.DMAPIKEY}`;
-            console.log(distanceMatrixAPIURL);
+            distanceMatrixAPIURL += `origins=${this.origin.latitude},${this.origin.longitude}&destinations=${this.destination.latitude},${this.destination.longitude}&key=${this.APIKEY}`;
             http.getJSON(distanceMatrixAPIURL).then(
                 result => {
                     this.distance = result.rows[0].elements[0].distance.text;
@@ -248,21 +189,18 @@ const DistanceMatrixAPIHelper = {
 
         },
         updateJourneyDetails(distanceInMeters) {
-            if(distanceInMeters < 15) {
-                this.destinationReached = true;
+            if (distanceInMeters < 15) {
                 this.endJourney();
-                console.log('journey ended');
                 return;
             }
-
-            let details = "Destination is " + this.distance + " away \n";
-            details += "Arrival Time is approximately: " + this.duration;
-            this.journeyDetails = details;
+            this.journeyDetails = "Destination is " + this.distance + " away \n";
+            this.journeyDetails += "Arrival Time is approximately: " + this.duration;
         }
     }
 }
 
 const MapsHelper = {
+    MapsUIHelper,
     DirectionsAPIHelper,
     LocationHelper,
     DistanceMatrixAPIHelper
