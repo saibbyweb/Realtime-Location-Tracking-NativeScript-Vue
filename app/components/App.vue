@@ -74,7 +74,7 @@ export default {
     mapReady(args) {
       /* get the mapView instance */
       this.mapView = args.object;
-      
+
       /* ios map center bug fix */
       setTimeout(() => {
         this.mapView.height = {
