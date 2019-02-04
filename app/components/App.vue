@@ -48,6 +48,7 @@ export default {
       destination: { latitude: 0, longitude: 0 },
       journeyDetails: "Journey: Not started yet!",
       allowExecution: false,
+      journeyStarted: false,
       mapView: null,
       zoom: 17,
       APIKEY: "AIzaSyAPw4owHD6nyUOMGQDI1pzyaELFndKXUe8"
@@ -83,13 +84,13 @@ export default {
         };
       }, 100);
 
-      this.mapView.mapAnimationsEnabled = true;
+  //    this.mapView.mapAnimationsEnabled = true;
       /* turn on my location button on map */
-      this.enableMyLocationButton(true);
+     this.enableMyLocationButton(true);
       /* add destination marker to map */
-      this.addMarkerToMap(this.destinationMarker, true);
+     this.addMarkerToMap(this.destinationMarker, true);
       /* add car marker to map (which will point to our location when journey starts) - visibility hidden  */
-      this.addMarkerToMap(this.carMarker, false);
+     this.addMarkerToMap(this.carMarker, false, "mylocation");
       /* set map origin coordinates to present device location */
       this.fetchMyLocation();
     },

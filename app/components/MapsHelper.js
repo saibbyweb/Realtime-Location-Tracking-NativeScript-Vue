@@ -1,17 +1,9 @@
-import {
-    Position,
-    Marker,
-    Polyline
-} from "nativescript-google-maps-sdk";
-import * as geolocation from "nativescript-geolocation";
-import {
-    Accuracy
-} from "ui/enums";
-import * as mapsModule from "nativescript-google-maps-sdk";
 import * as http from "http";
+import { Accuracy } from "ui/enums";
 import * as platform from "tns-core-modules/platform";
-const decodePolyline = require("decode-google-map-polyline");
-
+import * as geolocation from "nativescript-geolocation";
+import * as decodePolyline from "decode-google-map-polyline";
+import { Position, Marker, Polyline, Bounds } from "nativescript-google-maps-sdk";
 
 const MapsUIHelper = {
     data() {
@@ -22,7 +14,6 @@ const MapsUIHelper = {
     },
     methods: {
         enableMyLocationButton(value) {
-            this.mapView.settings.compassEnabled = value;
             if (platform.isAndroid) {
                 let uiSettings = this.mapView.gMap.getUiSettings();
                 uiSettings.setMyLocationButtonEnabled(value);
@@ -48,8 +39,7 @@ const MapsUIHelper = {
                 marker.rotation = direction;
         }
     }
-}
-
+};
 
 const DirectionsAPIHelper = {
     data() {
@@ -60,11 +50,12 @@ const DirectionsAPIHelper = {
     },
     methods: {
         async hitDirectionsAPI() {
+            let APIURL = `https://maps.googleapis.com/maps/api/directions/json`;
+            APIURL += `?origin=${this.origin.latitude},${this.origin.longitude}`;
+            APIURL += `&destination=${this.destination.latitude},${this.destination.longitude}`;
+            APIURL += `&key=${this.APIKEY}`;
 
-            let originCordinates = this.origin.latitude + "," + this.origin.longitude;
-            let destinationCordinates = this.destination.latitude + "," + this.destination.longitude;
-            let APIURL = `https://maps.googleapis.com/maps/api/directions/json?origin=${originCordinates}&destination=${destinationCordinates}&key=${this.APIKEY}`;
-            let promise = new Promise((resolve, reject) => {
+            let promise = new Promise((resolve) => {
 
                 http.getJSON(APIURL).then(
                     result => {
@@ -83,7 +74,6 @@ const DirectionsAPIHelper = {
             });
 
             return await promise;
-
         },
         drawRoute(encodedPolylinePoints) {
             this.mapView.removeAllPolylines();
@@ -101,14 +91,14 @@ const DirectionsAPIHelper = {
             /* journey started / animate camera */
         },
         getRouteInView(northEast, southWest) {
-            let bounds = mapsModule.Bounds.fromCoordinates(
+            let bounds = Bounds.fromCoordinates(
                 Position.positionFromLatLng(southWest.lat, southWest.lng),
                 Position.positionFromLatLng(northEast.lat, northEast.lng)
             );
-            this.mapView.setViewport(bounds,30);
+            this.mapView.setViewport(bounds,60);
         }
     }
-}
+};
 
 const LocationHelper = {
     data() {
@@ -148,7 +138,6 @@ const LocationHelper = {
                     this.getDirections();
                     /* calculate and display arrival time and distance on screen */
                     this.getDistance();
-                    /* detect when user reaches destination and cancel geolocation watch */
                 },
                 error => console.log(error), {
                     desiredAccuracy: Accuracy.high,
@@ -162,7 +151,7 @@ const LocationHelper = {
             geolocation.clearWatch(this.watch);
         }
     }
-}
+};
 
 const DistanceMatrixAPIHelper = {
     data() {
@@ -189,7 +178,9 @@ const DistanceMatrixAPIHelper = {
 
         },
         updateJourneyDetails(distanceInMeters) {
+            /* detect if user reached destination */
             if (distanceInMeters < 15) {
+               /* cancel geolocation watch */
                 this.endJourney();
                 return;
             }
@@ -197,12 +188,12 @@ const DistanceMatrixAPIHelper = {
             this.journeyDetails += "Arrival Time is approximately: " + this.duration;
         }
     }
-}
+};
 
-const MapsHelper = {
+
+export default {
     MapsUIHelper,
     DirectionsAPIHelper,
     LocationHelper,
     DistanceMatrixAPIHelper
-}
-export default MapsHelper;
+};
