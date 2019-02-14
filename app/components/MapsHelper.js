@@ -9,7 +9,7 @@ const MapsUIHelper = {
     data() {
         return {
             destinationMarker: new Marker(),
-            carMarker: new Marker(),
+            myLocationMarker: new Marker(),
         }
     },
     methods: {
@@ -59,7 +59,7 @@ const DirectionsAPIHelper = {
 
                 http.getJSON(APIURL).then(
                     result => {
-                        /* check if call was successful*/
+                        /* collect response */
                         let response = {
                             encodedPolylinePoints: result.routes[0].overview_polyline.points,
                             northEastBounds: result.routes[0].bounds.northeast,
@@ -85,10 +85,7 @@ const DirectionsAPIHelper = {
             this.polyline.visible = true;
             this.polyline.geodesic = true;
             this.polyline.width = 7;
-
             this.mapView.addPolyline(this.polyline);
-
-            /* journey started / animate camera */
         },
         getRouteInView(northEast, southWest) {
             let bounds = Bounds.fromCoordinates(
@@ -96,59 +93,6 @@ const DirectionsAPIHelper = {
                 Position.positionFromLatLng(northEast.lat, northEast.lng)
             );
             this.mapView.setViewport(bounds,60);
-        }
-    }
-};
-
-const LocationHelper = {
-    data() {
-        return {
-            watch: null
-        }
-    },
-    methods: {
-        fetchMyLocation() {
-            geolocation
-                .getCurrentLocation({
-                    desiredAccuracy: Accuracy.high,
-                    maximumAge: 1000,
-                    timeout: 20000
-                })
-                .then(res => {
-                    this.origin.latitude = res.latitude;
-                    this.origin.longitude = res.longitude;
-                })
-                .catch(e => {
-                    console.log("oh frak, error", e);
-                });
-        },
-        watchLocationAndUpdateJourney() {
-            this.watch = geolocation.watchLocation(
-                res => {
-                    let lat = res.latitude;
-                    let lng = res.longitude;
-                    let direction = res.direction;
-
-                    this.origin.latitude = lat;
-                    this.origin.longitude = lng;
-
-                    /* bind live location to marker position & make marker always head towards the driving direction */
-                    this.setMarker(this.carMarker, lat, lng, direction);
-                    /* update polyline after location changes */
-                    this.getDirections();
-                    /* calculate and display arrival time and distance on screen */
-                    this.getDistance();
-                },
-                error => console.log(error), {
-                    desiredAccuracy: Accuracy.high,
-                    updateDistance: 1,
-                    updateTime: 3000,
-                    minimumUpdateTime: 3000
-                }
-            );
-        },
-        clearWatch() {
-            geolocation.clearWatch(this.watch);
         }
     }
 };
@@ -190,6 +134,56 @@ const DistanceMatrixAPIHelper = {
     }
 };
 
+
+const LocationHelper = {
+    data() {
+        return {
+            watch: null
+        }
+    },
+    methods: {
+        fetchMyLocation() {
+            geolocation
+                .getCurrentLocation({
+                    desiredAccuracy: Accuracy.high,
+                    maximumAge: 1000,
+                    timeout: 20000
+                })
+                .then(res => {
+                    this.origin.latitude = res.latitude;
+                    this.origin.longitude = res.longitude;
+                })
+                .catch(e => {
+                    console.log("oh frak, error", e);
+                });
+        },
+        watchLocationAndUpdateJourney() {
+            this.watch = geolocation.watchLocation(
+                res => {
+                    let lat = res.latitude;
+                    let lng = res.longitude;
+                    this.origin.latitude = lat;
+                    this.origin.longitude = lng;
+                    /* bind live location to marker position & make marker always head towards the driving direction */
+                    this.setMarker(this.myLocationMarker, lat, lng, res.direction);
+                    /* update polyline after location changes */
+                    this.getDirections();
+                    /* calculate and display arrival time and distance on screen */
+                    this.getDistance();
+                },
+                error => console.log(error), {
+                    desiredAccuracy: Accuracy.high,
+                    updateDistance: 1,
+                    updateTime: 3000,
+                    minimumUpdateTime: 3000
+                }
+            );
+        },
+        clearWatch() {
+            geolocation.clearWatch(this.watch);
+        }
+    }
+};
 
 export default {
     MapsUIHelper,

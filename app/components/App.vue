@@ -1,4 +1,3 @@
-
 <template>
   <Page androidStatusBarBackground="#474747">
     <ActionBar title="Realtime Location NSVUE"/>
@@ -35,13 +34,6 @@ import * as platform from "platform";
 import MapsHelper from "./MapsHelper.js";
 
 export default {
-  mixins: [
-    MapsHelper.MapsUIHelper,
-    MapsHelper.DirectionsAPIHelper,
-    MapsHelper.LocationHelper,
-    MapsHelper.DistanceMatrixAPIHelper
-  ],
-  /* data object */
   data() {
     return {
       origin: { latitude: 0, longitude: 0 },
@@ -51,7 +43,7 @@ export default {
       journeyStarted: false,
       mapView: null,
       zoom: 17,
-      APIKEY: "AIzaSyAPw4owHD6nyUOMGQDI1pzyaELFndKXUe8"
+      APIKEY: "PUT_API_KEY_HERE"
     };
   },
   created: function() {
@@ -75,7 +67,7 @@ export default {
     mapReady(args) {
       /* get the mapView instance */
       this.mapView = args.object;
-      
+
       /* ios map center bug fix */
       setTimeout(() => {
         this.mapView.height = {
@@ -84,13 +76,12 @@ export default {
         };
       }, 100);
 
-  //    this.mapView.mapAnimationsEnabled = true;
       /* turn on my location button on map */
-     this.enableMyLocationButton(true);
+      this.enableMyLocationButton(true);
       /* add destination marker to map */
-     this.addMarkerToMap(this.destinationMarker, true);
-      /* add car marker to map (which will point to our location when journey starts) - visibility hidden  */
-     this.addMarkerToMap(this.carMarker, false, "mylocation");
+      this.addMarkerToMap(this.destinationMarker, true);
+      /* add my location marker to map (which will point to our location when journey starts) - visibility hidden  */
+      this.addMarkerToMap(this.myLocationMarker, false, "mylocation");
       /* set map origin coordinates to present device location */
       this.fetchMyLocation();
     },
@@ -98,7 +89,7 @@ export default {
       /* get coordinates of the point where user long pressed */
       let lat = args.position.latitude;
       let lng = args.position.longitude;
-      /* set the obtained coordinates as the destination coordinates */
+      /* set the obtained coordinates as destination coordinates */
       this.destination.latitude = lat;
       this.destination.longitude = lng;
       /* move the destination marker to the same coordinates */
@@ -109,20 +100,29 @@ export default {
       this.hitDirectionsAPI().then(response => {
         /* draw route from encoded polyline points */
         this.drawRoute(response.encodedPolylinePoints);
+        
+        /* if jouney started, don't adjust the camera */
+        if (this.journeyStarted)
+          return;
+
         /* adjust camera to bring route into view */
-        this.getRouteInView(response.northEastBounds, response.southWestBounds);
+          this.getRouteInView(
+            response.northEastBounds,
+            response.southWestBounds
+          );
       });
     },
     clearRoute() {
-      /* remove the route drawn between locations on map */
+      /* remove route drawn between locations on map */
       this.mapView.removeAllPolylines();
     },
     startJourney() {
       /* hide my location indicator and button */
       this.enableMyLocationButton(false);
-      /* un-hide the car marker */
-      this.carMarker.visible = true;
+      /* un-hide my location marker */
+      this.myLocationMarker.visible = true;
       /* update journey details */
+      this.journeyStarted = true;
       this.journeyDetails = "Journey started...";
       /* start watching for location changes and update the map and journey details accordingly */
       this.watchLocationAndUpdateJourney();
@@ -132,14 +132,21 @@ export default {
       this.clearWatch();
       /* remove the route drawn on map */
       this.clearRoute();
-      /* hide the car marker  */
-      this.carMarker.visible = false;
+      /* hide my location marker  */
+      this.myLocationMarker.visible = false;
       /* bring back my location button on screen */
       this.enableMyLocationButton(true);
       /* update journey details */
+      this.journeyStarted = false;
       this.journeyDetails = "Destination Reached.";
     }
-  }
+  },
+  mixins: [
+    MapsHelper.MapsUIHelper,
+    MapsHelper.DirectionsAPIHelper,
+    MapsHelper.DistanceMatrixAPIHelper,
+    MapsHelper.LocationHelper
+  ]
 };
 </script>
 

@@ -5,7 +5,7 @@ import * as platform from 'platform'
 Vue.config.silent = (TNS_ENV === 'production')
 
 if (platform.isIOS)
-  GMSServices.provideAPIKey("AIzaSyAPw4owHD6nyUOMGQDI1pzyaELFndKXUe8")
+  GMSServices.provideAPIKey("PUT_API_KEY_HERE")
 
 /* registering MapView element */
 Vue.registerElement('MapView', () => require('nativescript-google-maps-sdk').MapView)
