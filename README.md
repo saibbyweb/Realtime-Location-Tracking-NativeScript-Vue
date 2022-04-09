@@ -2,7 +2,9 @@
 
 ## Prerequisites
 
- 1) Obtain a key from [Google Cloud Console](https://console.cloud.google.com/google/maps-apis/overview) having access to the following APIs:
+ 1) Setup your machine to compile apps as directed in this [Nativescript-Vue Installation Manual](https://nativescript-vue.org/en/docs/getting-started/installation/)
+
+ 2) Obtain a key from [Google Cloud Console](https://console.cloud.google.com/google/maps-apis/overview) having access to the following APIs:
 
     - [Maps SDK for Android](https://developers.google.com/maps/documentation/android-sdk/intro) 
     - [Maps SDK for iOS](https://developers.google.com/maps/documentation/ios-sdk/get-api-key)
@@ -11,10 +13,25 @@
 
 > Google Cloud Console will ask you to create a project before you can gain access to the APIs. Once you have created a project and a key is issued for an API, subsequent enabled APIs will be accessible using the same key which was issued for the first one. That means, the 4 APIs listed above can have one single key if falling under the same project, which exactly is the case with this app.
 
- 2) Setup your machine to compile apps as communicated in this [Nativescript-Vue Installation Manual](https://nativescript-vue.org/en/docs/getting-started/installation/)
+ 3) Setting up the API key
 
 
+    Now that we have got our precious key with all required APIs enabled, we can proceed by feeding this key to both Android and iOS.
+  - **For Android** : Modify `AndroidManifest.xml` located at `app/App_Resources/Android/src/main/AndroidManifest.xml` and insert this between `<application></application>` tags.
 
+
+      ```
+      <meta-data android:name="com.google.android.geo.API_KEY" android:value="PUT_API_KEY_HERE" />
+      ```
+  - **For iOS**: Add the following snippet at the top of main.js
+
+
+      ```
+      import * as platform from 'platform'  
+      if (platform.isIOS) { 
+        GMSServices.provideAPIKey("PUT_API_KEY_HERE")
+      }
+      ```
 
 ## Usage
 
